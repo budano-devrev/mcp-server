@@ -53,7 +53,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "query": {"type": "string"},
                     "namespace": {
                         "type": "string", 
-                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista", "incident"],
+                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista", "incident", "conversation", "rev_user"],
                         "description": "The namespace to search in. Use this to specify the type of object to search for."
                     },
                 },
