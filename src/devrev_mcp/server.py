@@ -329,7 +329,7 @@ async def handle_list_tools() -> list[types.Tool]:
         ),
         types.Tool(
             name="list_meetings",
-            description="List meetings in DevRev",
+            description="Search and list meetings in DevRev with various filters",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -416,6 +416,17 @@ async def handle_list_tools() -> list[types.Tool]:
                         "description": "Filters for meeting on specified state or outcomes"
                     }
                 }
+            }
+        ),
+        types.Tool(
+            name="get_meeting",
+            description="Get detailed information about a specific meeting in DevRev using its ID",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "The DevRev ID of the meeting"}
+                },
+                "required": ["id"]
             }
         ),
         types.Tool(
@@ -1161,6 +1172,36 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Meetings listed successfully: {response.json()}"
+            )
+        ]
+    elif name == "get_meeting":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        
+        response = make_devrev_request(
+            "meetings.get",
+            {
+                "id": id
+            }
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get meeting failed with status {response.status_code}: {error_text}"
+                )
+            ]
+        
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Meeting details for '{id}':\n{response.json()}"
             )
         ]
     elif name == "valid_stage_transition":
