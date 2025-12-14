@@ -53,7 +53,7 @@ async def handle_list_tools() -> list[types.Tool]:
                     "query": {"type": "string"},
                     "namespace": {
                         "type": "string", 
-                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista", "incident", "conversation", "rev_user"],
+                        "enum": ["article", "issue", "ticket", "part", "dev_user", "account", "rev_org", "vista", "incident", "conversation", "rev_user", "custom_object"],
                         "description": "The namespace to search in. Use this to specify the type of object to search for."
                     },
                 },
@@ -440,6 +440,32 @@ async def handle_list_tools() -> list[types.Tool]:
                     "timeline_entry": {"type": "string", "description": "The timeline entry about updates to the work item (issue, ticket) or part (enhancement)."},
                 },
                 "required": ["id", "timeline_entry"],
+            }
+        ),
+        types.Tool(
+            name="get_timeline_entry",
+            description="Get all timeline entries for a work item (issue, ticket), conversation, or part (enhancement)",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string", "description": "The DevRev ID of the work item (issue, ticket), conversation, or part (enhancement)"},
+                    "cursor": {
+                        "type": "object",
+                        "properties": {
+                            "next_cursor": {"type": "string", "description": "The cursor to use for pagination. If not provided, iteration begins from the first page."},
+                            "mode": {"type": "string", "enum": ["after", "before"], "description": "The mode to iterate after the cursor or before the cursor."},
+                        },
+                        "required": ["next_cursor", "mode"],
+                        "description": "The cursor to use for pagination. If not provided, iteration begins from the first page. In the output you get next_cursor, use it and the correct mode to get the next or previous page."
+                    },
+                    "limit": {"type": "integer", "description": "The maximum number of timeline entries to return"},
+                    "type": {
+                        "type": "array", 
+                        "items": {"type": "string", "enum": ["timeline_comment", "timeline_event", "timeline_state_change"]},
+                        "description": "Filter by timeline entry types"
+                    }
+                },
+                "required": ["id"],
             }
         ),
         types.Tool(
@@ -1292,6 +1318,50 @@ async def handle_call_tool(
             types.TextContent(
                 type="text",
                 text=f"Timeline entry created successfully: {timeline_response.json()}"
+            )
+        ]
+    elif name == "get_timeline_entry":
+        if not arguments:
+            raise ValueError("Missing arguments")
+
+        payload = {}
+
+        id = arguments.get("id")
+        if not id:
+            raise ValueError("Missing id parameter")
+        payload["object"] = id
+
+        cursor = arguments.get("cursor")
+        if cursor:
+            payload["cursor"] = cursor["next_cursor"]
+            payload["mode"] = cursor["mode"]
+
+        limit = arguments.get("limit")
+        if limit:
+            payload["limit"] = limit
+
+        type_filter = arguments.get("type")
+        if type_filter:
+            payload["type"] = type_filter
+
+        response = make_devrev_request(
+            "timeline-entries.list",
+            payload
+        )
+
+        if response.status_code != 200:
+            error_text = response.text
+            return [
+                types.TextContent(
+                    type="text",
+                    text=f"Get timeline entries failed with status {response.status_code}: {error_text}"
+                )
+            ]
+
+        return [
+            types.TextContent(
+                type="text",
+                text=f"Timeline entries for '{id}':\n{response.json()}"
             )
         ]
     elif name == "get_sprints":
