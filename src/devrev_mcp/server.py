@@ -81,7 +81,10 @@ async def handle_list_tools() -> list[types.Tool]:
                     "title": {"type": "string"},
                     "body": {"type": "string"},
                     "applies_to_part": {"type": "string", "description": "The DevRev ID of the part to which the work item applies"},
-                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"}
+                    "owned_by": {"type": "array", "items": {"type": "string"}, "description": "The DevRev IDs of the users who are assigned to the work item"},
+                    "reported_by": {"type": "string", "description": "The DevRev ID of the user who reported the work item"},
+                    "account": {"type": "string", "description": "The DevRev ID of the account associated with the work item"},
+                    "rev_org": {"type": "string", "description": "The DevRev ID of the rev_org associated with the work item"}
                 },
                 "required": ["type", "title", "applies_to_part"],
             },
@@ -652,16 +655,29 @@ async def handle_call_tool(
 
         body = arguments.get("body", "")
         owned_by = arguments.get("owned_by", [])
+        reported_by = arguments.get("reported_by")
+        account = arguments.get("account")
+        rev_org = arguments.get("rev_org")
+
+        payload = {
+            "type": type,
+            "title": title,
+            "body": body,
+            "applies_to_part": applies_to_part,
+            "owned_by": owned_by
+        }
+
+        # Add optional fields if provided
+        if reported_by:
+            payload["reported_by"] = reported_by
+        if account:
+            payload["account"] = account
+        if rev_org:
+            payload["rev_org"] = rev_org
 
         response = make_devrev_request(
             "works.create",
-            {
-                "type": type,
-                "title": title,
-                "body": body,
-                "applies_to_part": applies_to_part,
-                "owned_by": owned_by
-            }
+            payload
         )
         if response.status_code != 201:
             error_text = response.text
